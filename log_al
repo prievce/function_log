@@ -1,0 +1,288 @@
+create or replace function log_al(taban varchar2, ust varchar2)
+return varchar2
+is 
+    sonuc NUMBER := 0;
+    mesaj varchar2(200):= null;
+    v_taban number:=null;
+    v_ust number:=null;
+begin
+            begin
+                    v_taban := to_number(taban);
+                    v_ust := to_number(ust);
+                    EXCEPTION
+                        WHEN value_error THEN
+                        RETURN 'geçersiz bir karakter girdiniz HATA : ' || SQLERRM;
+                        WHEN others then
+                        return  'HATA: SQLERRM';
+            end;
+                
+            IF  taban<=0 THEN --taban > 0 olmalı
+                IF ust <= 0  THEN -- ust R+ olmalı
+                    mesaj := 'ust R+ olmalı ve taban > 0 olmalı' || ' ust : ' || ust || ' taban : '|| taban;
+                ELSE 
+                    mesaj := 'taban > 0 olmalı.  Girdiğiniz taban değeri :' || taban; 
+                END IF;
+            ELSIF taban=1 THEN --taban = 1 OLAMAZ 
+                IF ust <= 0  THEN -- ust R+ olmalı
+                    mesaj := 'taban = 1 OLAMAZ ve ust R+ olmalı' || ' ust : ' || ust || ' taban : '|| taban;
+                ELSE 
+                    mesaj := 'taban = 1 OLAMAZ.  Girdiğiniz taban değeri :' || taban; 
+                END IF;
+            ELSE
+                sonuc := ln(ust) / ln(taban);
+                mesaj := 'Sonuç: ' || to_char(ROUND(sonuc,5)) ;
+            END IF;
+            
+            RETURN mesaj;
+
+            
+end;
+
+select log_al(2,9) ,log(2,9) from dual;
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------------------------------------
+-- faktöriyel hesabı
+DECLARE
+  v_faktoriyel NUMBER := 5; 
+  sonuc NUMBER := 1; 
+BEGIN
+  IF v_faktoriyel < 0 THEN
+    DBMS_OUTPUT.PUT_LINE('GEÇERSİZ: Faktöriyel negatif sayılar için tanımlanamaz.');
+  ELSIF v_faktoriyel = 0 THEN
+    sonuc := 1; 
+    DBMS_OUTPUT.PUT_LINE('Faktöriyel (' || v_faktoriyel || '!) = ' || sonuc);
+  ELSE
+    FOR i IN 1..v_faktoriyel LOOP
+      sonuc := sonuc * i;
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Faktöriyel (' || v_faktoriyel || '!) = ' || sonuc);
+  END IF;
+END;
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- faktöriyel hesabı yapan fonksiyon
+create or replace function faktoriyel_al(v_faktoriyel number)
+return number
+is 
+sonuc NUMBER := 1; 
+begin
+    IF v_faktoriyel < 0 THEN
+        DBMS_OUTPUT.PUT_LINE('GEÇERSİZ: Faktöriyel negatif sayılar için tanımlanamaz.');
+    ELSIF v_faktoriyel = 0 THEN
+        sonuc := 1; 
+    ELSE
+        FOR i IN 1..v_faktoriyel LOOP
+             sonuc := sonuc * i;
+        END LOOP;
+    END IF;
+    return sonuc;
+end;
+
+select faktoriyel_al(5) from dual;
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- e sayısını hesaplama
+DECLARE
+    e_degeri NUMBER := 1; 
+    fakt NUMBER;          
+    i NUMBER := 1;        
+BEGIN
+    LOOP
+        fakt := faktoriyel_al(i);
+        e_degeri := e_degeri + (1 / fakt);
+        IF i = 10000 THEN
+            EXIT;
+        END IF;
+        i := i + 1;
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('e degeri: ' || e_degeri);
+END;
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- üslü sayı hesabı yapan fonksiyon
+select uslu_sayi(2,3) from dual;
+
+create or replace function uslu_sayi(alt number, ust number)
+return number
+is 
+    sonuc NUMBER := 1;  
+begin
+    FOR i IN 1..ust LOOP
+        sonuc := sonuc *alt ;
+    END LOOP;
+    return sonuc;
+end;
+
+--------------------------------------------------------------------------------------
+-- ln hesabı 
+DECLARE
+    v_xdegeri number := 2; ---- (0, 2] aralığında çalışıo
+    v_sonuc1 number := 0;
+    v_sonuc2 number := 0;
+    v_sonuc number := 0;
+    v_term1 number := 1;
+    v_term2 number := 2;
+    deger NUMBER := 1000; 
+BEGIN
+    
+    WHILE v_term1 <= deger LOOP
+        v_sonuc1 := v_sonuc1 + (uslu_sayı(v_xdegeri-1,v_term1) / v_term1);
+        v_term1 := v_term1 +2;
+    END LOOP;
+    WHILE v_term2 <= deger LOOP
+        v_sonuc2 := v_sonuc2 - (uslu_sayı(v_xdegeri-1,v_term2) / v_term2);
+        v_term2 := v_term2 +2;
+    END LOOP;
+    
+    v_sonuc := v_sonuc1+ v_sonuc2;
+    DBMS_OUTPUT.PUT_LINE(v_sonuc);
+END;
+
+------------------------------------ ln hesaplama --------------------------------------------------
+DECLARE
+    v_xdegeri NUMBER := 8; -- Herhangi bir değer için kullanılabilir
+    v_yeni_x NUMBER;
+    v_k NUMBER := 0;
+    v_sonuc NUMBER := 0;
+    v_term NUMBER;
+    precision NUMBER := 1000; -- Doğruluk için terim sayısı
+    b NUMBER := 2; -- Kullanmak istediğiniz taban (örneğin 2)
+    ln_b NUMBER := 0;
+BEGIN
+    -- ln(b)'yi hesaplamak için (burada b = 2)
+    v_yeni_x := b;
+    FOR n IN 1 .. precision LOOP
+        v_term := uslu_sayı(-1, n + 1) * uslu_sayı(v_yeni_x - 1, n) / n;
+        ln_b := ln_b + v_term;
+    END LOOP;
+
+    -- x değerini (0, 2] aralığına getirmek için
+    v_yeni_x := v_xdegeri;
+    WHILE v_yeni_x > b LOOP
+        v_yeni_x := v_yeni_x / b;
+        v_k := v_k + 1;
+    END LOOP;
+
+    WHILE v_yeni_x < 1 LOOP
+        v_yeni_x := v_yeni_x * b;
+        v_k := v_k - 1;
+    END LOOP;
+
+    -- Seri açılımı kullanarak ln(yeni_x) hesapla
+    FOR n IN 1 .. precision LOOP
+        v_term := uslu_sayı(-1, n + 1) * uslu_sayı(v_yeni_x - 1, n) / n;
+        v_sonuc := v_sonuc + v_term;
+    END LOOP;
+
+    -- Sonuç: ln(v_xdegeri) = ln(yeni_x) + k * ln(b)
+    v_sonuc := v_sonuc + v_k * ln_b;
+
+    DBMS_OUTPUT.PUT_LINE('Hesaplanan ln(' || v_xdegeri || ') = ' || v_sonuc);
+END;
+
+
+
+
+------------------------------------ ln hesaplayan fonksiyon --------------------------------------------------
+create or replace function ln_hesaplama(v_xdegeri number)
+return varchar2
+is 
+    v_yeni_x NUMBER;
+    v_k NUMBER := 0;
+    v_sonuc NUMBER := 0;
+    v_term NUMBER;
+    precision NUMBER := 1000; -- Doğruluk için terim sayısı
+    b NUMBER := 2; -- Kullanmak istediğiniz taban (örneğin 2)
+    ln_b NUMBER := 0;
+BEGIN
+    -- ln(b)'yi hesaplamak için (burada b = 2)
+    v_yeni_x := b;
+    FOR n IN 1 .. precision LOOP
+        v_term := uslu_sayı(-1, n + 1) * uslu_sayı(v_yeni_x - 1, n) / n;
+        ln_b := ln_b + v_term;
+    END LOOP;
+
+    -- x değerini (0, 2] aralığına getirmek için
+    v_yeni_x := v_xdegeri;
+    WHILE v_yeni_x > b LOOP
+        v_yeni_x := v_yeni_x / b;
+        v_k := v_k + 1;
+    END LOOP;
+
+    WHILE v_yeni_x < 1 LOOP
+        v_yeni_x := v_yeni_x * b;
+        v_k := v_k - 1;
+    END LOOP;
+
+    -- Seri açılımı kullanarak ln(yeni_x) hesapla
+    FOR n IN 1 .. precision LOOP
+        v_term := uslu_sayı(-1, n + 1) * uslu_sayı(v_yeni_x - 1, n) / n;
+        v_sonuc := v_sonuc + v_term;
+    END LOOP;
+
+    -- Sonuç: ln(v_xdegeri) = ln(yeni_x) + k * ln(b)
+    v_sonuc := v_sonuc + v_k * ln_b;
+
+    DBMS_OUTPUT.PUT_LINE('Hesaplanan ln(' || v_xdegeri || ') = ' || v_sonuc);
+    -- DBMS_OUTPUT.PUT_LINE('Hazır ln(' || v_xdegeri || ') = ' || ln(v_xdegeri)); -- Karşılaştırma için
+    return v_sonuc;
+END;
+
+
+select ln_hesaplama(8) from dual;
+
+------------------------------------ logaritma hesaplayan fonksiyon --------------------------------------------------
+create or replace function log_al2(taban varchar2, ust varchar2)
+return varchar2
+is 
+    sonuc NUMBER := 0;
+    mesaj varchar2(200):= null;
+    v_taban number:=null;
+    v_ust number:=null;
+begin
+            begin
+                    v_taban := to_number(taban);
+                    v_ust := to_number(ust);
+                    EXCEPTION
+                        WHEN value_error THEN
+                        RETURN 'geçersiz bir karakter girdiniz HATA : ' || SQLERRM;
+                        WHEN others then
+                        return  'HATA: SQLERRM';
+            end;
+                
+            IF  taban<=0 THEN --taban > 0 olmalı
+                IF ust <= 0  THEN -- ust R+ olmalı
+                    mesaj := 'ust R+ olmalı ve taban > 0 olmalı' || ' ust : ' || ust || ' taban : '|| taban;
+                ELSE 
+                    mesaj := 'taban > 0 olmalı.  Girdiğiniz taban değeri :' || taban; 
+                END IF;
+            ELSIF taban=1 THEN --taban = 1 OLAMAZ 
+                IF ust <= 0  THEN -- ust R+ olmalı
+                    mesaj := 'taban = 1 OLAMAZ ve ust R+ olmalı' || ' ust : ' || ust || ' taban : '|| taban;
+                ELSE 
+                    mesaj := 'taban = 1 OLAMAZ.  Girdiğiniz taban değeri :' || taban; 
+                END IF;
+            ELSE
+                sonuc := ln_hesaplama(ust) / ln_hesaplama(taban);
+                mesaj := 'Sonuç: ' || to_char(ROUND(sonuc,5)) ;
+            END IF;
+            
+            RETURN mesaj;
+
+            
+end;
+
+select log_al2(4,9) ,log(4,9) from dual;
+
+
+
+
+
